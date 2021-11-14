@@ -35,7 +35,8 @@ def platyplus(release_name='platyplus',
         hasura_resource_name='hasura',
         path=hasura_path,
         hasura_endpoint='http://localhost:{}'.format(hasura_port),
-        hasura_secret=hasura_secret)
+        hasura_secret=hasura_secret,
+        wait_for_services=['http://localhost:{}/healthz'.format(hasura_backend_plus_port)])
     if (frontend_path):
         dockerfile = 'Dockerfile' if os.path.exists('Dockerfile') else os.path.join(__file__, '../Dockerfile')
         docker_build(
