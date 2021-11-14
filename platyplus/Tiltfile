@@ -1,24 +1,28 @@
 load('ext://helm_remote', 'helm_remote')
-
 load('../hasura-console/Tiltfile', 'hasura_console')
+
 def platyplus(release_name='platyplus',
     frontend_port='4200',
     hasura_port='8080',
     hasura_backend_plus_port='9000',
     hasura_secret='hasura-dev-secret',
     postgres_password='fixed1234',
-    path='.'):
+    hasura_path='.',
+    frontend_path=None,
+    entrypoint='yarn start'):
+    frontendImage = 'local.tilt.dev/platyplus-frontend'
     helm_remote('platyplus',
                 repo_url='https://charts.platy.plus',
                 set=['global.ingress.enabled=false',
                     'hasura-backend-plus.hasura.postgresql.postgresqlPassword={}'.format(postgres_password),
                     'hasura-backend-plus.hasura.adminSecret={}'.format(hasura_secret),
                     'frontend.configFile.values.hasuraUrl=http://localhost:{}/v1/graphql'.format(hasura_port),
-                    'frontend.configFile.values.authUrl=http://localhost:{}'.format(hasura_backend_plus_port)])
-
+                    'frontend.configFile.values.authUrl=http://localhost:{}'.format(hasura_backend_plus_port)] + 
+                    (['frontend.imageConfig.repository={}'.format(frontendImage)] if frontend_path else []))
+    remote_frontend_port = frontend_port if frontend_path else '80'
     k8s_resource('{}-frontend'.format(release_name),
                     new_name='frontend',
-                    port_forwards='{}:80'.format(frontend_port))
+                    port_forwards='{}:{}'.format(frontend_port, remote_frontend_port))
     k8s_resource('{}-hasura-backend-plus'.format(release_name),
                     new_name='hasura-backend-plus',
                     port_forwards='{}:3000'.format(hasura_backend_plus_port))
@@ -28,6 +32,28 @@ def platyplus(release_name='platyplus',
     hasura_console(
         release_name='',
         hasura_resource_name='hasura',
-        path=path,
+        path=hasura_path,
         hasura_endpoint='http://localhost:{}'.format(hasura_port),
         hasura_secret=hasura_secret)
+    if (frontend_path):
+        dockerfile = 'Dockerfile' if os.path.exists('Dockerfile') else os.path.join(__file__, '../Dockerfile')
+        docker_build(
+            frontendImage,
+            frontend_path,
+            build_args={'NODE_ENV': 'development'},
+            dockerfile=dockerfile,
+            entrypoint=entrypoint,
+            live_update=[
+                sync('.', '/app'),
+                run('cd /app && yarn install', trigger=['./package.json', './yarn.lock'])
+                # TODO webpack
+                # if all that changed was start-time.txt, make sure the server
+                # reloads so that it will reflect the new startup time
+                # run('touch /app/index.js', trigger='./start-time.txt'),
+
+                # add a congrats message!
+                # run('sed -i "s/Hello cats!/{}/g" /app/views/index.mustache'.
+                #     format(congrats))
+            ])
+
+
