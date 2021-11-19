@@ -9,7 +9,8 @@ def platyplus(release_name='platyplus',
     postgres_password = 'fixed1234',
     hasura_path = '.',
     frontend_path = None,
-    entrypoint = 'yarn start'):
+    entrypoint = 'yarn start',
+    values = {}):
     frontendImage = 'local.tilt.dev/platyplus-frontend'
     helm_remote('platyplus',
                 repo_url='https://charts.platy.plus',
@@ -18,7 +19,8 @@ def platyplus(release_name='platyplus',
                     'hasura-backend-plus.hasura.adminSecret={}'.format(hasura_secret),
                     'frontend.configFile.values.hasuraUrl=http://localhost:{}/v1/graphql'.format(hasura_port),
                     'frontend.configFile.values.authUrl=http://localhost:{}'.format(hasura_backend_plus_port)] + 
-                    (['frontend.imageConfig.repository={}'.format(frontendImage)] if frontend_path else []))
+                    (['frontend.imageConfig.repository={}'.format(frontendImage)] if frontend_path else []) + 
+                    ['%s=%s' % (x,values[x]) for x in values])
     remote_frontend_port = frontend_port if frontend_path else 80
     k8s_resource('{}-frontend'.format(release_name),
                     new_name='frontend',
