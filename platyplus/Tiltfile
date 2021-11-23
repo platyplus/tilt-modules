@@ -1,5 +1,5 @@
 load('ext://helm_remote', 'helm_remote')
-load('../hasura-console/Tiltfile', 'hasura_console')
+load('ext://hasura', 'hasura_console')
 
 def platyplus(release_name='platyplus',
     frontend_port = 4200,
